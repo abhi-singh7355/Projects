@@ -1,0 +1,226 @@
+#```yaml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+  pull_request:
+    branches:
+      - main
+      - master
+
+
+jobs:
+
+  build-and-test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ---------------------------------------
+      # 1. Checkout repository
+      # ---------------------------------------
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+
+      # ---------------------------------------
+      # 2. Setup Python
+      # ---------------------------------------
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+
+      # ---------------------------------------
+      # 3. Install dependencies
+      # ---------------------------------------
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest ruff
+
+
+      # ---------------------------------------
+      # 4. Verify Python environment
+      # ---------------------------------------
+
+      - name: Verify Environment
+        run: |
+          python --version
+          pip --version
+          pip check
+
+
+      # ---------------------------------------
+      # 5. Ruff lint
+      # ---------------------------------------
+
+      - name: Lint Code with Ruff
+        run: |
+          ruff check src/ tests/
+
+
+      # ---------------------------------------
+      # 6. Ruff formatting
+      # ---------------------------------------
+
+      - name: Check Code Formatting
+        run: |
+          ruff format --check src/ tests/
+
+
+      # ---------------------------------------
+      # 7. Run tests
+      # ---------------------------------------
+
+      - name: Run Pytest Unit & Integration Tests
+        run: |
+          pytest tests/ -v
+
+
+      # ---------------------------------------
+      # 8. Verify dataset
+      # ---------------------------------------
+
+      - name: Verify Dataset
+        run: |
+          python -c "import pandas as pd; df=pd.read_csv('data/raw/Loan_Default.csv'); print('Dataset shape:', df.shape); print('Target column exists:', 'Status' in df.columns)"
+
+
+      # ---------------------------------------
+      # 9. Train models
+      # ---------------------------------------
+
+      - name: Train ML Models
+        run: |
+          python -m src.modeling.train
+
+
+      # ---------------------------------------
+      # 10. Verify model artifacts
+      # ---------------------------------------
+
+      - name: Verify Model Artifacts
+        run: |
+          python -c "from pathlib import Path; p=Path('models'); print('Model files:'); [print(x) for x in p.rglob('*.joblib')]"
+
+
+      # ---------------------------------------
+      # 11. Verify metrics
+      # ---------------------------------------
+
+      - name: Verify Model Reports
+        run: |
+          python -c "from pathlib import Path; p=Path('reports'); print('Report files:'); [print(x) for x in p.rglob('*') if x.is_file()]"
+
+
+      # ---------------------------------------
+      # 12. Verify model metadata
+      # ---------------------------------------
+
+      - name: Verify Model Versioning
+        run: |
+          python -c "import json; from pathlib import Path; files=list(Path('models').rglob('metadata.json')); print('Metadata files:', files); [print(json.loads(f.read_text())['model_version']) for f in files]"
+
+
+      # ---------------------------------------
+      # 13. Verify logging
+      # ---------------------------------------
+
+      - name: Verify Logging
+        run: |
+          mkdir -p logs
+          test -d logs
+          echo "Logging directory verified"
+
+
+      # ---------------------------------------
+      # 14. Test Flask API
+      # ---------------------------------------
+
+      - name: Test Flask API
+        run: |
+          pytest tests/test_api.py -v
+
+
+      # ---------------------------------------
+      # 15. Build Docker image
+      # ---------------------------------------
+
+      - name: Build Docker Image
+        run: |
+          docker build -t ml-eda-full-fledge:latest .
+
+
+      # ---------------------------------------
+      # 16. Verify Docker image
+      # ---------------------------------------
+
+      - name: Verify Docker Image
+        run: |
+          docker images ml-eda-full-fledge
+
+
+  # =================================================
+  # Docker Push Job
+  # =================================================
+
+  docker-push:
+
+    needs: build-and-test
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ---------------------------------------
+      # 17. Checkout
+      # ---------------------------------------
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+
+      # ---------------------------------------
+      # 18. Login to Docker Hub
+      # ---------------------------------------
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+
+      # ---------------------------------------
+      # 19. Build Docker Image
+      # ---------------------------------------
+
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -t nitins1/ml-eda-full-fledge:latest \
+            .
+
+
+      # ---------------------------------------
+      # 20. Push Docker Image
+      # ---------------------------------------
+
+      - name: Push Docker Image
+        run: |
+          docker push nitins1/ml-eda-full-fledge:latest
+

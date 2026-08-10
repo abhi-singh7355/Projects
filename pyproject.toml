@@ -1,0 +1,8 @@
+[tool.ruff]
+exclude = [
+    ".venv",
+    ".git",
+    "__pycache__",
+    "notebooks",
+    "Industry_Grade_EDA_Feature_Selection.ipynb",
+]
