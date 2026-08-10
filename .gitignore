@@ -6,26 +6,49 @@ env/
 # Python cache
 __pycache__/
 *.py[cod]
-.pytest_cache/
+*.pyo
+
+# Python distribution files
+*.whl
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
 
 # Logs
 logs/
 *.log
 
-# Large model artifacts
-models/
+# Temporary processed data
+*.tmp
+*.temp
+
+# IDE
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ruff
+.ruff_cache/
+
+# Large ML model files
 *.joblib
 *.pkl
 *.pickle
 
-# Generated data
-data/interim/
-data/processed/
+# Generated model directories
+models/latest/
 
-# Jupyter
-.ipynb_checkpoints/
-
-# OS / IDE
-.vscode/
-.DS_Store
-Thumbs.db
+# Generated reports if not required in Git
+reports/*/confusion_matrix.png
+reports/*/roc_curve.png
+reports/*/pr_curve.png
